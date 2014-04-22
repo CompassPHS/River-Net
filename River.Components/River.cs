@@ -46,7 +46,9 @@ namespace River.Components
             };
             var index = _riverContext.Destination.Index;
             var type = _riverContext.Destination.Type;
-            sb.Append("{ \"index\" : { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\", \"_id\" : \"" + curObj["_id"] + "\" } }");
+            sb.Append("{ \"index\" : { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\", \"_id\" : \"" + curObj["_id"] + "\"");
+            if (curObj.ContainsKey("_parent")) sb.Append(", \"_parent\" : \"" + curObj["_parent"] + "\"");
+            sb.Append(" } }");
             sb.Append("\n");
             sb.Append(JsonConvert.SerializeObject(curObj, settings));
             sb.Append("\n");

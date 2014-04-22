@@ -21,7 +21,8 @@ namespace River.Quartz
             var riverContext = new RiverContext()
             {
                 Name = dataMap.GetString("name"),
-                //Cron = dataMap.GetString("cron"),
+                SuppressNulls = dataMap.GetBoolean("suppressNulls"),
+                Cron = dataMap.GetString("cron"),
 
                 Source = new Source()
                 {
