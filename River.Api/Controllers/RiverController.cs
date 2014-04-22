@@ -11,24 +11,27 @@ namespace River.Api.Controllers
 {
     public class RiverController : ApiController
     {
+        /*
         // GET api/river
         public IEnumerable<string> Get()
         {
             return new string[] { "value1", "value2" };
         }
+        */
 
         // GET api/river/5
         public RiverContext Get(string name)
         {
-            return new RiverContext() { Name = name };
+            return WebApiApplication.SchedulerWrapper.GetJob(name);
         }
 
         /*
-                // POST api/river
-                public void Post([FromBody]string value)
-                {
-                }
+        // POST api/river
+        public void Post([FromBody]string value)
+        {
+        }
         */
+
         // PUT api/river/5
         public void Put(string id, RiverContext riverContext)
         {
@@ -38,6 +41,7 @@ namespace River.Api.Controllers
         // DELETE api/river/5
         public void Delete(string id)
         {
+            WebApiApplication.SchedulerWrapper.DeleteJob(id);
         }
     }
 }

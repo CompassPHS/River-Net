@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using River.Components;
 
 namespace River.Quartz
 {
@@ -69,22 +70,64 @@ namespace River.Quartz
                 .UsingJobData("destination.type", riverContext.Destination.Type)
                 .Build();
 
-            var trigger = (!String.IsNullOrWhiteSpace(riverContext.Cron))
-            ? TriggerBuilder.Create()
-                .WithIdentity(riverContext.Name) //, "group1")
-                .WithCronSchedule(riverContext.Cron)
-                .ForJob(riverContext.Name) //, "group1")
-                .Build()
-            : TriggerBuilder.Create()
-                .WithIdentity(riverContext.Name) //, "group1")
-                .StartNow()
-                .ForJob(riverContext.Name) //, "group1")
-                .Build();
+            var triggerBuilder = TriggerBuilder.Create()
+                .WithIdentity(riverContext.Name)
+                .ForJob(riverContext.Name); //, "group1")
+            
+            if(!String.IsNullOrWhiteSpace(riverContext.Cron))
+                triggerBuilder.WithCronSchedule(riverContext.Cron);
+            else
+                triggerBuilder.StartNow();
+                
+             var trigger = triggerBuilder.Build();
+            
 
             if (_scheduler.CheckExists(new JobKey(riverContext.Name)))
                 _scheduler.DeleteJob(new JobKey(riverContext.Name));
 
             _scheduler.ScheduleJob(job, trigger);
+        }
+
+        public RiverContext GetJob(string riverName)
+        {
+            var jobDetail = _scheduler.GetJobDetail(new JobKey(riverName));
+
+            var dataMap = jobDetail.JobDataMap;
+
+            //RiverContext riverContext = (RiverContext)dataMap["RiverContext"];
+
+            var riverContext = new RiverContext()
+            {
+                Name = dataMap.GetString("name"),
+                //Cron = dataMap.GetString("cron"),
+
+                Source = new Source()
+                {
+                    Server = dataMap.GetString("source.server"),
+                    Database = dataMap.GetString("source.database"),
+                    User = dataMap.GetString("source.user"),
+                    Password = dataMap.GetString("source.password"),
+                    Sql = new Sql()
+                    {
+                        Command = dataMap.GetString("source.sql.command"),
+                        IsProc = dataMap.GetBoolean("source.sql.isProc")
+                    }
+                },
+
+                Destination = new Destination()
+                {
+                    Url = dataMap.GetString("destination.url"),
+                    Index = dataMap.GetString("destination.index"),
+                    Type = dataMap.GetString("destination.type")
+                }
+            };
+
+            return riverContext;
+        }
+
+        public void DeleteJob(string riverName)
+        {
+            _scheduler.DeleteJob(new JobKey(riverName));
         }
     }
 }
