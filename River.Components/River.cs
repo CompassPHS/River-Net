@@ -68,29 +68,36 @@ namespace River.Components
         {
             Dictionary<string, object> curObj = null;
 
-            foreach (var rowObj in GetRows(_riverContext.Source))
+            try
             {
-                try
+                foreach (var rowObj in GetRows(_riverContext.Source))
                 {
-                    if (curObj == null)
+                    try
                     {
-                        curObj = new Dictionary<string, object>();
+                        if (curObj == null)
+                        {
+                            curObj = new Dictionary<string, object>();
+                        }
+                        else if (curObj.ContainsKey("_id") && curObj["_id"].ToString() != rowObj["_id"].ToString())
+                        {
+                            //push curObj
+                            PushObj(curObj, false);
+
+                            //now make a new obj
+                            curObj = new Dictionary<string, object>();
+                        }
+
+                        Merge(rowObj, curObj);
                     }
-                    else if (curObj.ContainsKey("_id") && curObj["_id"].ToString() != rowObj["_id"].ToString())
+                    catch (Exception e)
                     {
-                        //push curObj
-                        PushObj(curObj, false);
-
-                        //now make a new obj
-                        curObj = new Dictionary<string, object>();
+                        Console.WriteLine(e);
                     }
-
-                    Merge(rowObj, curObj);
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
 
             if (curObj != null) PushObj(curObj, true);
@@ -170,6 +177,17 @@ namespace River.Components
                         else destList.Add(srcChild);
                     }
                 }
+                else if (skvp.Value.GetType() == typeof(List<object>))
+                {
+                    var srcList = skvp.Value as List<object>;
+                    var destList = dest[skvp.Key] as List<object>;
+
+                    foreach (var srcChild in srcList)
+                    {
+                        if (!destList.Contains(srcChild))
+                            destList.Add(srcChild);
+                    }
+                }
                 else
                 {
                     dest[skvp.Key] = skvp.Value;
@@ -198,10 +216,25 @@ namespace River.Components
                 var idx = column.IndexOf('[');
                 var name = column.Substring(0, idx);
 
-                if (!parentObj.ContainsKey(name))
-                    parentObj[name] = new List<Dictionary<string, object>>() { new Dictionary<string, object>() };
+                var childName = column.Substring(idx + 1, column.LastIndexOf(']') - idx - 1).Trim();
 
-                ParseColumn(column.Substring(idx + 1, column.LastIndexOf(']') - idx - 1), data, (parentObj[name] as List<Dictionary<string, object>>)[0] as Dictionary<string, object>);
+                if(childName == "")
+                {
+                    if (!parentObj.ContainsKey(name))
+                        parentObj[name] = new List<object>() { data };
+                    else
+                    {
+                        var list = parentObj[name] as List<object>;
+                        if (!list.Contains(data)) list.Add(data);
+                    }
+                }
+                else
+                {
+                    if (!parentObj.ContainsKey(name))
+                        parentObj[name] = new List<Dictionary<string, object>>() { new Dictionary<string, object>() };
+
+                    ParseColumn(childName, data, (parentObj[name] as List<Dictionary<string, object>>)[0] as Dictionary<string, object>);
+                }
             }
             else
             {
