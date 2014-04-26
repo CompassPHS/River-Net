@@ -60,6 +60,7 @@ namespace River.Quartz
 
                 .UsingJobData("source.server", riverContext.Source.Server)
                 .UsingJobData("source.database", riverContext.Source.Database)
+                .UsingJobData("source.trusted", riverContext.Source.Trusted)
                 .UsingJobData("source.user", riverContext.Source.User)
                 .UsingJobData("source.password", riverContext.Source.Password)
                 .UsingJobData("source.sql.command", riverContext.Source.Sql.Command)

@@ -16,8 +16,6 @@ namespace River.Quartz
 
             var dataMap = context.JobDetail.JobDataMap;
 
-            //RiverContext riverContext = (RiverContext)dataMap["RiverContext"];
-
             var riverContext = new RiverContext()
             {
                 Name = dataMap.GetString("name"),
@@ -28,6 +26,7 @@ namespace River.Quartz
                 {
                     Server = dataMap.GetString("source.server"),
                     Database = dataMap.GetString("source.database"),
+                    Trusted = dataMap.GetBoolean("source.trusted"),
                     User = dataMap.GetString("source.user"),
                     Password = dataMap.GetString("source.password"),
                     Sql = new Sql()

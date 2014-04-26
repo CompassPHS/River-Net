@@ -14,7 +14,6 @@ namespace River.Components
 {
     public class River
     {
-        //String connectionString = ConfigurationManager.ConnectionStrings["CDW"].ConnectionString;
         private RiverContext _riverContext;
         Nest.ElasticClient _client;
 
@@ -105,13 +104,22 @@ namespace River.Components
 
         private IEnumerable<Dictionary<string, object>> GetRows(Source source)
         {
-            //Data Source=cphs-sqltest-01;Initial Catalog=CDW;Persist Security Info=True;User ID=usr_lineitem;Password=l1n3!t3m
-            var connectionString = String.Format("Data Source={0};Initial Catalog={1};Persist Security Info=True; User ID={2};Password={3}"
-                , source.Server //"cphs-sqltest-01"
-                , source.Database //"CDW"
-                , source.User //"usr_lineitem"
-                , source.Password //"l1n3!t3m"
+            var connectionString = String.Format("Data Source={0};Initial Catalog={1};Persist Security Info=True;"
+                , source.Server
+                , source.Database
             );
+
+            if (source.Trusted)
+            {
+                connectionString += String.Format("Trusted_Connection=True;");
+            }
+            else
+            {
+                connectionString += String.Format("User ID={0};Password={1};"
+                    , source.User
+                    , source.Password
+                );
+            }
 
             using (var connection = new SqlConnection(connectionString))
             {
@@ -197,9 +205,9 @@ namespace River.Components
 
         private void ParseColumn(string column, object data, Dictionary<string, object> parentObj)
         {
-            if (column.IndexOf('.') > -1
-                && (column.IndexOf('.') < column.LastIndexOf(']')
-                    || column.IndexOf(']') == -1))
+            // First child is property
+            if ((column.IndexOf('.') > -1 && column.IndexOf('[') > -1 && column.IndexOf('.') < column.IndexOf('['))
+                || (column.IndexOf('.') > -1 && column.IndexOf(']') == -1))
             {
                 var idx = column.IndexOf('.');
                 var name = column.Substring(0, idx);
@@ -207,17 +215,17 @@ namespace River.Components
                 if (!parentObj.ContainsKey(name))
                     parentObj[name] = new Dictionary<string, object>();
 
-                ParseColumn(column.Substring(idx + 1), data, (parentObj[name] as Dictionary<string, object>));
+                ParseColumn(column.Substring(idx + 1).Trim(), data, (parentObj[name] as Dictionary<string, object>));
             }
-            else if (column.LastIndexOf(']') > -1
-                && (column.LastIndexOf(']') < column.IndexOf('.')
-                    || column.IndexOf('.') == -1))
+            // First child is array
+            else if ((column.IndexOf('[') > -1 && column.IndexOf('.') > -1 && column.IndexOf('[') < column.IndexOf('.'))
+                || (column.IndexOf('[') > -1 && column.IndexOf('.') == -1))
             {
                 var idx = column.IndexOf('[');
                 var name = column.Substring(0, idx);
 
-                var childName = column.Substring(idx + 1, column.LastIndexOf(']') - idx - 1).Trim();
-
+                var childName = column.Substring(idx + 1);
+                
                 if(childName == "")
                 {
                     if (!parentObj.ContainsKey(name))
@@ -230,12 +238,20 @@ namespace River.Components
                 }
                 else
                 {
+                    if ((childName.IndexOf(']') > -1 && childName.IndexOf('[') > -1 && childName.IndexOf(']') < childName.IndexOf('['))
+                        || (childName.IndexOf(']') > -1 && childName.IndexOf('[') == -1))
+                    {
+                        var remove = childName.IndexOf(']');
+                        childName = childName.Substring(0, remove) + childName.Substring(remove + 1, childName.Length - remove - 1);
+                    }
+
                     if (!parentObj.ContainsKey(name))
                         parentObj[name] = new List<Dictionary<string, object>>() { new Dictionary<string, object>() };
 
                     ParseColumn(childName, data, (parentObj[name] as List<Dictionary<string, object>>)[0] as Dictionary<string, object>);
                 }
             }
+            // No children
             else
             {
                 parentObj[column] = data;

@@ -32,6 +32,8 @@ namespace River.Components
 
         public string Database { get; set; }
 
+        public bool Trusted { get; set; } // Ignores user and password
+
         public string User { get; set; }
 
         public string Password { get; set; }
@@ -52,9 +54,6 @@ namespace River.Components
     public class Sql
     {
         public string Command { get; set; }
-
-        //        [DataMember]
-        //        public string Parameters { get; set; }
 
         public bool IsProc { get; set; }
     }
