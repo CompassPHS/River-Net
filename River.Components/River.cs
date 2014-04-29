@@ -32,7 +32,7 @@ namespace River.Components
                 , body
                 , null);
 
-            Console.WriteLine(response);
+            log.Info(response);            
         }
 
         StringBuilder sb = new StringBuilder();
@@ -61,7 +61,7 @@ namespace River.Components
                 BulkPushToElasticsearch(sb.ToString());
                 sb.Clear();
                 var end = System.Environment.TickCount;
-                Console.WriteLine("{0} has taken {1}s", count, (end - start) / 1000);
+                log.Info(string.Format("{0} has taken {1}s", count, (end - start) / 1000));
             }
         }
 
