@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Common.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -16,6 +17,7 @@ namespace River.Components
     {
         private RiverContext _riverContext;
         Nest.ElasticClient _client;
+        ILog log = Common.Logging.LogManager.GetCurrentClassLogger();
 
         public River(RiverContext riverContext)
         {
@@ -65,6 +67,7 @@ namespace River.Components
 
         public void Flow()
         {
+            log.Info(string.Format("Starting river {0}", _riverContext.Name));
             Dictionary<string, object> curObj = null;
 
             try
@@ -90,16 +93,18 @@ namespace River.Components
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine(e);
+                        log.Error(string.Format("Error river {0}", _riverContext.Name), e);
                     }
                 }
             }
             catch (Exception e)
-            {
-                Console.WriteLine(e);
+            {                
+                log.Error(string.Format("Error river {0}", _riverContext.Name), e);
             }
 
             if (curObj != null) PushObj(curObj, true);
+
+            log.Info(string.Format("Completed river {0}", _riverContext.Name));
         }
 
         private IEnumerable<Dictionary<string, object>> GetRows(Source source)
