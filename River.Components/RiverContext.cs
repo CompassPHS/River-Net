@@ -28,17 +28,16 @@ namespace River.Components
 
     public class Source
     {
-        public string Server { get; set; }
+        public string ConnectionString { get; set; }
 
-        public string Database { get; set; }
+        public int CommandTimeout { get; set; }
 
-        public bool Trusted { get; set; } // Ignores user and password
+        public string Command { get; set; }
 
-        public string User { get; set; }
-
-        public string Password { get; set; }
-
-        public Sql Sql { get; set; }
+        public Source()
+        {
+            CommandTimeout = 30;
+        }
     }
 
     public class Destination
@@ -49,12 +48,5 @@ namespace River.Components
 
         public string Type { get; set; }
 
-    }
-
-    public class Sql
-    {
-        public string Command { get; set; }
-
-        public bool IsProc { get; set; }
-    }
+    }   
 }

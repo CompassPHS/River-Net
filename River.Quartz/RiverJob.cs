@@ -24,16 +24,9 @@ namespace River.Quartz
 
                 Source = new Source()
                 {
-                    Server = dataMap.GetString("source.server"),
-                    Database = dataMap.GetString("source.database"),
-                    Trusted = dataMap.GetBoolean("source.trusted"),
-                    User = dataMap.GetString("source.user"),
-                    Password = dataMap.GetString("source.password"),
-                    Sql = new Sql()
-                    {
-                        Command = dataMap.GetString("source.sql.command"),
-                        IsProc = dataMap.GetBoolean("source.sql.isProc")
-                    }
+                    ConnectionString = dataMap.GetString("source.connectionString"),
+                    Command = dataMap.GetString("source.command"),
+                    CommandTimeout = dataMap.GetInt("source.commandTimeout")
                 },
 
                 Destination = new Destination()

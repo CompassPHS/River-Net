@@ -58,13 +58,9 @@ namespace River.Quartz
                 .UsingJobData("maxBulkSize", riverContext.MaxBulkSize)
                 .UsingJobData("suppressNulls", riverContext.SuppressNulls)
 
-                .UsingJobData("source.server", riverContext.Source.Server)
-                .UsingJobData("source.database", riverContext.Source.Database)
-                .UsingJobData("source.trusted", riverContext.Source.Trusted)
-                .UsingJobData("source.user", riverContext.Source.User)
-                .UsingJobData("source.password", riverContext.Source.Password)
-                .UsingJobData("source.sql.command", riverContext.Source.Sql.Command)
-                .UsingJobData("source.sql.isProc", riverContext.Source.Sql.IsProc)
+                .UsingJobData("source.connectionString", riverContext.Source.ConnectionString)
+                .UsingJobData("source.command", riverContext.Source.Command)
+                .UsingJobData("source.commandTimeout", riverContext.Source.CommandTimeout)
 
                 .UsingJobData("destination.url", riverContext.Destination.Url)
                 .UsingJobData("destination.index", riverContext.Destination.Index)
@@ -104,15 +100,9 @@ namespace River.Quartz
 
                 Source = new Source()
                 {
-                    Server = dataMap.GetString("source.server"),
-                    Database = dataMap.GetString("source.database"),
-                    User = dataMap.GetString("source.user"),
-                    Password = dataMap.GetString("source.password"),
-                    Sql = new Sql()
-                    {
-                        Command = dataMap.GetString("source.sql.command"),
-                        IsProc = dataMap.GetBoolean("source.sql.isProc")
-                    }
+                    ConnectionString = dataMap.GetString("source.connectionString"),
+                    Command = dataMap.GetString("source.command"),
+                    CommandTimeout = dataMap.GetInt("source.commandTimeout")
                 },
 
                 Destination = new Destination()

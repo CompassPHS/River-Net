@@ -104,33 +104,16 @@ namespace River.Components
 
         private IEnumerable<Dictionary<string, object>> GetRows(Source source)
         {
-            var connectionString = String.Format("Data Source={0};Initial Catalog={1};Persist Security Info=True;"
-                , source.Server
-                , source.Database
-            );
-
-            if (source.Trusted)
-            {
-                connectionString += String.Format("Trusted_Connection=True;");
-            }
-            else
-            {
-                connectionString += String.Format("User ID={0};Password={1};"
-                    , source.User
-                    , source.Password
-                );
-            }
-
-            using (var connection = new SqlConnection(connectionString))
+            using (var connection = new SqlConnection(source.ConnectionString))
             {
                 connection.Open();
 
-                using (var cmd = new SqlCommand(source.Sql.Command, connection))
+                using (var cmd = new SqlCommand(source.Command, connection))
                 {
-                    if (source.Sql.IsProc) cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandTimeout = source.CommandTimeout;                  
 
                     using (var reader = cmd.ExecuteReader())
-                    {
+                     {
                         while (reader.Read())
                         {
                             var rowObj = new Dictionary<string, object>();
@@ -217,39 +200,41 @@ namespace River.Components
 
                 ParseColumn(column.Substring(idx + 1).Trim(), data, (parentObj[name] as Dictionary<string, object>));
             }
-            // First child is array
+            // First child is array of primitives
+            else if (column.IndexOf('[') > -1 && column.IndexOf(']') == column.IndexOf('[')+1)
+            {
+                var idx = column.IndexOf('[');
+                var name = column.Substring(0, idx);
+
+                if (!parentObj.ContainsKey(name))
+                    parentObj[name] = new List<object>() { data };
+                else
+                {
+                    var list = parentObj[name] as List<object>;
+                    if (!list.Contains(data)) list.Add(data);
+                }
+            }
+            // First child is array of objects
             else if ((column.IndexOf('[') > -1 && column.IndexOf('.') > -1 && column.IndexOf('[') < column.IndexOf('.'))
                 || (column.IndexOf('[') > -1 && column.IndexOf('.') == -1))
             {
                 var idx = column.IndexOf('[');
                 var name = column.Substring(0, idx);
 
-                var childName = column.Substring(idx + 1);
+                var childName = column.Substring(idx + 1);                
+               
+                if ((childName.IndexOf(']') > -1 && childName.IndexOf('[') > -1 && childName.IndexOf(']') < childName.IndexOf('['))
+                    || (childName.IndexOf(']') > -1 && childName.IndexOf('[') == -1))
+                {
+                    var remove = childName.IndexOf(']');
+                    childName = childName.Substring(0, remove) + childName.Substring(remove + 1, childName.Length - remove - 1);
+                }
+
+                if (!parentObj.ContainsKey(name))
+                    parentObj[name] = new List<Dictionary<string, object>>() { new Dictionary<string, object>() };
+
+                ParseColumn(childName, data, (parentObj[name] as List<Dictionary<string, object>>)[0] as Dictionary<string, object>);
                 
-                if(childName == "")
-                {
-                    if (!parentObj.ContainsKey(name))
-                        parentObj[name] = new List<object>() { data };
-                    else
-                    {
-                        var list = parentObj[name] as List<object>;
-                        if (!list.Contains(data)) list.Add(data);
-                    }
-                }
-                else
-                {
-                    if ((childName.IndexOf(']') > -1 && childName.IndexOf('[') > -1 && childName.IndexOf(']') < childName.IndexOf('['))
-                        || (childName.IndexOf(']') > -1 && childName.IndexOf('[') == -1))
-                    {
-                        var remove = childName.IndexOf(']');
-                        childName = childName.Substring(0, remove) + childName.Substring(remove + 1, childName.Length - remove - 1);
-                    }
-
-                    if (!parentObj.ContainsKey(name))
-                        parentObj[name] = new List<Dictionary<string, object>>() { new Dictionary<string, object>() };
-
-                    ParseColumn(childName, data, (parentObj[name] as List<Dictionary<string, object>>)[0] as Dictionary<string, object>);
-                }
             }
             // No children
             else
