@@ -1,5 +1,6 @@
 ﻿using Common.Logging;
 using Newtonsoft.Json;
+using River.Components.Contexts;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -16,12 +17,15 @@ namespace River.Components
     public class River
     {
         private RiverContext _riverContext;
+        Sources.Source _source;
         Nest.ElasticClient _client;
         ILog log = Common.Logging.LogManager.GetCurrentClassLogger();
 
         public River(RiverContext riverContext)
         {
             _riverContext = riverContext;
+            _source = Sources.Source.GetSource(riverContext.Source);
+
             _client = new Nest.ElasticClient(new Nest.ConnectionSettings(new Uri(_riverContext.Destination.Url)));
         }
 
@@ -72,7 +76,7 @@ namespace River.Components
 
             try
             {
-                foreach (var rowObj in GetRows(_riverContext.Source))
+                foreach (var rowObj in _source.GetRows(_riverContext.Source))
                 {
                     try
                     {
@@ -107,37 +111,6 @@ namespace River.Components
             log.Info(string.Format("Completed river {0}", _riverContext.Name));
         }
 
-        private IEnumerable<Dictionary<string, object>> GetRows(Source source)
-        {
-            using (var connection = new SqlConnection(source.ConnectionString))
-            {
-                connection.Open();
-
-                using (var cmd = new SqlCommand(source.Command, connection))
-                {
-                    cmd.CommandTimeout = source.CommandTimeout;                  
-
-                    using (var reader = cmd.ExecuteReader())
-                     {
-                        while (reader.Read())
-                        {
-                            var rowObj = new Dictionary<string, object>();
-
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                var data = reader[i];
-
-                                if (_riverContext.SuppressNulls && data == DBNull.Value) continue;
-
-                                ParseColumn(reader.GetName(i), data, rowObj);
-                            }
-
-                            yield return rowObj;
-                        }
-                    }
-                }
-            }
-        }
 
         private void Merge(Dictionary<string, object> src, Dictionary<string, object> dest)
         {
@@ -188,63 +161,6 @@ namespace River.Components
                 {
                     dest[skvp.Key] = skvp.Value;
                 }
-            }
-        }
-
-        private void ParseColumn(string column, object data, Dictionary<string, object> parentObj)
-        {
-            // First child is property
-            if ((column.IndexOf('.') > -1 && column.IndexOf('[') > -1 && column.IndexOf('.') < column.IndexOf('['))
-                || (column.IndexOf('.') > -1 && column.IndexOf(']') == -1))
-            {
-                var idx = column.IndexOf('.');
-                var name = column.Substring(0, idx);
-
-                if (!parentObj.ContainsKey(name))
-                    parentObj[name] = new Dictionary<string, object>();
-
-                ParseColumn(column.Substring(idx + 1).Trim(), data, (parentObj[name] as Dictionary<string, object>));
-            }
-            // First child is array of primitives
-            else if (column.IndexOf('[') > -1 && column.IndexOf(']') == column.IndexOf('[')+1)
-            {
-                var idx = column.IndexOf('[');
-                var name = column.Substring(0, idx);
-
-                if (!parentObj.ContainsKey(name))
-                    parentObj[name] = new List<object>() { data };
-                else
-                {
-                    var list = parentObj[name] as List<object>;
-                    if (!list.Contains(data)) list.Add(data);
-                }
-            }
-            // First child is array of objects
-            else if ((column.IndexOf('[') > -1 && column.IndexOf('.') > -1 && column.IndexOf('[') < column.IndexOf('.'))
-                || (column.IndexOf('[') > -1 && column.IndexOf('.') == -1))
-            {
-                var idx = column.IndexOf('[');
-                var name = column.Substring(0, idx);
-
-                var childName = column.Substring(idx + 1);                
-               
-                if ((childName.IndexOf(']') > -1 && childName.IndexOf('[') > -1 && childName.IndexOf(']') < childName.IndexOf('['))
-                    || (childName.IndexOf(']') > -1 && childName.IndexOf('[') == -1))
-                {
-                    var remove = childName.IndexOf(']');
-                    childName = childName.Substring(0, remove) + childName.Substring(remove + 1, childName.Length - remove - 1);
-                }
-
-                if (!parentObj.ContainsKey(name))
-                    parentObj[name] = new List<Dictionary<string, object>>() { new Dictionary<string, object>() };
-
-                ParseColumn(childName, data, (parentObj[name] as List<Dictionary<string, object>>)[0] as Dictionary<string, object>);
-                
-            }
-            // No children
-            else
-            {
-                parentObj[column] = data;
             }
         }
 

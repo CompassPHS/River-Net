@@ -1,5 +1,6 @@
 ﻿using Quartz;
 using River.Components;
+using River.Components.Contexts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,27 +16,7 @@ namespace River.Quartz
             var key = context.JobDetail.Key;
 
             var dataMap = context.JobDetail.JobDataMap;
-
-            var riverContext = new RiverContext()
-            {
-                Name = dataMap.GetString("name"),
-                SuppressNulls = dataMap.GetBoolean("suppressNulls"),
-                Cron = dataMap.GetString("cron"),
-
-                Source = new Source()
-                {
-                    ConnectionString = dataMap.GetString("source.connectionString"),
-                    Command = dataMap.GetString("source.command"),
-                    CommandTimeout = dataMap.GetInt("source.commandTimeout")
-                },
-
-                Destination = new Destination()
-                {
-                    Url = dataMap.GetString("destination.url"),
-                    Index = dataMap.GetString("destination.index"),
-                    Type = dataMap.GetString("destination.type")
-                }
-            };
+            var riverContext = (RiverContext)dataMap["riverContext"];
 
             var river = new Components.River(riverContext);
             river.Flow();

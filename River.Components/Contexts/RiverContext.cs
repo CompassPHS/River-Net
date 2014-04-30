@@ -1,11 +1,16 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using River.Components.Contexts.Sources;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace River.Components
+namespace River.Components.Contexts
 {
+    [Serializable]
+    [JsonObject]
     public class RiverContext
     {
         public string Name { get; set; }
@@ -18,28 +23,17 @@ namespace River.Components
 
         public int MaxBulkSize { get; set; }
 
-        public bool SuppressNulls { get; set; }
+        //public bool SuppressNulls { get; set; }
 
         public RiverContext()
         {
             MaxBulkSize = 100;
         }
     }
+      
 
-    public class Source
-    {
-        public string ConnectionString { get; set; }
-
-        public int CommandTimeout { get; set; }
-
-        public string Command { get; set; }
-
-        public Source()
-        {
-            CommandTimeout = 30;
-        }
-    }
-
+    [Serializable]
+    [JsonObject]
     public class Destination
     {
         public string Url { get; set; }
