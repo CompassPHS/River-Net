@@ -12,7 +12,7 @@ namespace River.Components.Sources
         {
             var context = source as Contexts.Sources.FlatFile;
 
-            using (var reader = new System.IO.StreamReader(""))
+            using (var reader = new System.IO.StreamReader(context.Location))
             {
                 string line = null;
 
