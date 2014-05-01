@@ -1,4 +1,5 @@
-﻿using System;
+﻿using River.Components.Contexts.Converters;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -22,6 +23,10 @@ namespace River.Api
 
             WebApiConfig.Register(GlobalConfiguration.Configuration);
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
+
+            var formatters = GlobalConfiguration.Configuration.Formatters;
+	        var jsonFormatter = formatters.JsonFormatter;
+	        jsonFormatter.SerializerSettings.Converters.Add(new SourceConverter());
 
             SchedulerWrapper = River.Quartz.SchedulerWrapper.GetSchedulerWrapper();
             SchedulerWrapper.Load();
