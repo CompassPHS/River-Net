@@ -62,6 +62,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="job_scheduling_data_2_0.xsd" />
     <None Include="packages.config" />
   </ItemGroup>

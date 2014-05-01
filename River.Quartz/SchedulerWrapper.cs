@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using River.Components;
+using River.Components.Contexts;
 
 namespace River.Quartz
 {
@@ -48,26 +49,13 @@ namespace River.Quartz
             _scheduler.Shutdown();
         }
 
-        public void ScheduleJob(River.Components.RiverContext riverContext)
+        public void ScheduleJob(RiverContext riverContext)
         {
+            var jobData = new JobDataMap();
+            jobData.Put("riverContext", riverContext);
             IJobDetail job = JobBuilder.Create<RiverJob>()
                 .WithIdentity(riverContext.Name) // name "myRiver", group "river"
-                //                .SetJobData(jobData)
-                .UsingJobData("name", riverContext.Name)
-                .UsingJobData("cron", riverContext.Cron)
-                .UsingJobData("maxBulkSize", riverContext.MaxBulkSize)
-                .UsingJobData("suppressNulls", riverContext.SuppressNulls)
-
-                .UsingJobData("source.server", riverContext.Source.Server)
-                .UsingJobData("source.database", riverContext.Source.Database)
-                .UsingJobData("source.user", riverContext.Source.User)
-                .UsingJobData("source.password", riverContext.Source.Password)
-                .UsingJobData("source.sql.command", riverContext.Source.Sql.Command)
-                .UsingJobData("source.sql.isProc", riverContext.Source.Sql.IsProc)
-
-                .UsingJobData("destination.url", riverContext.Destination.Url)
-                .UsingJobData("destination.index", riverContext.Destination.Index)
-                .UsingJobData("destination.type", riverContext.Destination.Type)
+                .SetJobData(jobData)
                 .Build();
 
             var triggerBuilder = TriggerBuilder.Create()
@@ -94,33 +82,7 @@ namespace River.Quartz
 
             var dataMap = jobDetail.JobDataMap;
 
-            //RiverContext riverContext = (RiverContext)dataMap["RiverContext"];
-
-            var riverContext = new RiverContext()
-            {
-                Name = dataMap.GetString("name"),
-                //Cron = dataMap.GetString("cron"),
-
-                Source = new Source()
-                {
-                    Server = dataMap.GetString("source.server"),
-                    Database = dataMap.GetString("source.database"),
-                    User = dataMap.GetString("source.user"),
-                    Password = dataMap.GetString("source.password"),
-                    Sql = new Sql()
-                    {
-                        Command = dataMap.GetString("source.sql.command"),
-                        IsProc = dataMap.GetBoolean("source.sql.isProc")
-                    }
-                },
-
-                Destination = new Destination()
-                {
-                    Url = dataMap.GetString("destination.url"),
-                    Index = dataMap.GetString("destination.index"),
-                    Type = dataMap.GetString("destination.type")
-                }
-            };
+            var riverContext = (RiverContext)dataMap["RiverContext"];
 
             return riverContext;
         }

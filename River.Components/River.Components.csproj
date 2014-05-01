@@ -32,6 +32,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Common.Logging">
+      <HintPath>..\packages\Common.Logging.2.2.0\lib\net40\Common.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="Common.Logging.Core">
+      <HintPath>..\packages\Common.Logging.Core.2.2.0\lib\net40\Common.Logging.Core.dll</HintPath>
+    </Reference>
     <Reference Include="Nest">
       <HintPath>..\packages\NEST.0.12.0.0\lib\NET4\Nest.dll</HintPath>
     </Reference>
@@ -47,11 +53,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Contexts\Converters\SourceConverter.cs" />
+    <Compile Include="Contexts\Destination.cs" />
+    <Compile Include="Contexts\Sources\Database.cs" />
+    <Compile Include="Contexts\Sources\FlatFile.cs" />
+    <Compile Include="Contexts\Sources\Source.cs" />
     <Compile Include="River.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RiverContext.cs" />
+    <Compile Include="Contexts\RiverContext.cs" />
+    <Compile Include="Sources\Database.cs" />
+    <Compile Include="Sources\FlatFile.cs" />
+    <Compile Include="Sources\Source.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

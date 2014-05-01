@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using Common.Logging;
+using Newtonsoft.Json;
+using River.Components.Contexts;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -14,63 +16,27 @@ namespace River.Components
 {
     public class River
     {
-        //String connectionString = ConfigurationManager.ConnectionStrings["CDW"].ConnectionString;
         private RiverContext _riverContext;
-        Nest.ElasticClient _client;
+        Sources.Source _source;
+        Mouth _mouth;
+
+        ILog log = Common.Logging.LogManager.GetCurrentClassLogger();
 
         public River(RiverContext riverContext)
         {
             _riverContext = riverContext;
-            _client = new Nest.ElasticClient(new Nest.ConnectionSettings(new Uri(_riverContext.Destination.Url)));
-        }
-
-        private void BulkPushToElasticsearch(string body)
-        {
-            var response = _client.Raw.BulkPut(_riverContext.Destination.Index
-                , _riverContext.Destination.Type
-                , body
-                , null);
-
-            Console.WriteLine(response);
-        }
-
-        StringBuilder sb = new StringBuilder();
-        int count = 0;
-        int start = System.Environment.TickCount;
-
-        private void PushObj(Dictionary<string, object> curObj, bool pushNow)
-        {
-            var settings = new Newtonsoft.Json.JsonSerializerSettings()
-            {
-                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
-            };
-            var index = _riverContext.Destination.Index;
-            var type = _riverContext.Destination.Type;
-            sb.Append("{ \"index\" : { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\", \"_id\" : \"" + curObj["_id"] + "\"");
-            if (curObj.ContainsKey("_parent")) sb.Append(", \"_parent\" : \"" + curObj["_parent"] + "\"");
-            sb.Append(" } }");
-            sb.Append("\n");
-            sb.Append(JsonConvert.SerializeObject(curObj, settings));
-            sb.Append("\n");
-
-            count++;
-
-            if (pushNow || count % _riverContext.MaxBulkSize == 0)
-            {
-                BulkPushToElasticsearch(sb.ToString());
-                sb.Clear();
-                var end = System.Environment.TickCount;
-                Console.WriteLine("{0} has taken {1}s", count, (end - start) / 1000);
-            }
+            _source = Sources.Source.GetSource(riverContext.Source);
+            _mouth = new Mouth(riverContext.Destination);            
         }
 
         public void Flow()
         {
+            log.Info(string.Format("Starting river {0}", _riverContext.Name));
             Dictionary<string, object> curObj = null;
 
             try
             {
-                foreach (var rowObj in GetRows(_riverContext.Source))
+                foreach (var rowObj in _source.GetRows(_riverContext.Source))
                 {
                     try
                     {
@@ -78,10 +44,10 @@ namespace River.Components
                         {
                             curObj = new Dictionary<string, object>();
                         }
-                        else if (curObj.ContainsKey("_id") && curObj["_id"].ToString() != rowObj["_id"].ToString())
+                        else if (!curObj.ContainsKey("_id") || curObj["_id"].ToString() != rowObj["_id"].ToString())
                         {
                             //push curObj
-                            PushObj(curObj, false);
+                            _mouth.PushObj(curObj, false);
 
                             //now make a new obj
                             curObj = new Dictionary<string, object>();
@@ -91,57 +57,20 @@ namespace River.Components
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine(e);
+                        log.Error(string.Format("Error river {0}", _riverContext.Name), e);
                     }
                 }
             }
             catch (Exception e)
-            {
-                Console.WriteLine(e);
+            {                
+                log.Error(string.Format("Error river {0}", _riverContext.Name), e);
             }
 
-            if (curObj != null) PushObj(curObj, true);
+            if (curObj != null) _mouth.PushObj(curObj, true);
+
+            log.Info(string.Format("Completed river {0}", _riverContext.Name));
         }
 
-        private IEnumerable<Dictionary<string, object>> GetRows(Source source)
-        {
-            //Data Source=cphs-sqltest-01;Initial Catalog=CDW;Persist Security Info=True;User ID=usr_lineitem;Password=l1n3!t3m
-            var connectionString = String.Format("Data Source={0};Initial Catalog={1};Persist Security Info=True; User ID={2};Password={3}"
-                , source.Server //"cphs-sqltest-01"
-                , source.Database //"CDW"
-                , source.User //"usr_lineitem"
-                , source.Password //"l1n3!t3m"
-            );
-
-            using (var connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
-
-                using (var cmd = new SqlCommand(source.Sql.Command, connection))
-                {
-                    if (source.Sql.IsProc) cmd.CommandType = CommandType.StoredProcedure;
-
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            var rowObj = new Dictionary<string, object>();
-
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                var data = reader[i];
-
-                                if (_riverContext.SuppressNulls && data == DBNull.Value) continue;
-
-                                ParseColumn(reader.GetName(i), data, rowObj);
-                            }
-
-                            yield return rowObj;
-                        }
-                    }
-                }
-            }
-        }
 
         private void Merge(Dictionary<string, object> src, Dictionary<string, object> dest)
         {
@@ -195,52 +124,92 @@ namespace River.Components
             }
         }
 
-        private void ParseColumn(string column, object data, Dictionary<string, object> parentObj)
+    }
+
+    public class Mouth
+    {
+        ILog log = Common.Logging.LogManager.GetCurrentClassLogger();
+
+        Contexts.Destination _destination;
+        Nest.ElasticClient _client;
+
+        public Mouth(Contexts.Destination destination)
         {
-            if (column.IndexOf('.') > -1
-                && (column.IndexOf('.') < column.LastIndexOf(']')
-                    || column.IndexOf(']') == -1))
+            _destination = destination;
+            _client = new Nest.ElasticClient(new Nest.ConnectionSettings(new Uri(destination.Url)));
+        }
+
+        private void BulkPushToElasticsearch(string body)
+        {
+            var response = _client.Raw.BulkPut(_destination.Index
+                , _destination.Type
+                , body
+                , null);
+
+            log.Info(response);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+        int start = System.Environment.TickCount;
+
+        bool _indexCreated = false;
+
+        public void PushObj(Dictionary<string, object> curObj, bool pushNow)
+        {
+            if (!_indexCreated) EagerCreateIndex(_destination);            
+
+            var settings = new Newtonsoft.Json.JsonSerializerSettings()
             {
-                var idx = column.IndexOf('.');
-                var name = column.Substring(0, idx);
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            };
+            var index = _destination.Index;
+            var type = _destination.Type;
+            sb.Append("{ \"index\" : { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\"");
+            if (curObj.ContainsKey("_id")) sb.Append(", \"_id\" : \"" + curObj["_id"] + "\"");
+            if (curObj.ContainsKey("_parent")) sb.Append(", \"_parent\" : \"" + curObj["_parent"] + "\"");
+            sb.Append(" } }");
+            sb.Append("\n");
+            sb.Append(JsonConvert.SerializeObject(curObj, settings));
+            sb.Append("\n");
 
-                if (!parentObj.ContainsKey(name))
-                    parentObj[name] = new Dictionary<string, object>();
+            count++;
 
-                ParseColumn(column.Substring(idx + 1), data, (parentObj[name] as Dictionary<string, object>));
-            }
-            else if (column.LastIndexOf(']') > -1
-                && (column.LastIndexOf(']') < column.IndexOf('.')
-                    || column.IndexOf('.') == -1))
+            if (pushNow || count % _destination.MaxBulkSize == 0)
             {
-                var idx = column.IndexOf('[');
-                var name = column.Substring(0, idx);
-
-                var childName = column.Substring(idx + 1, column.LastIndexOf(']') - idx - 1).Trim();
-
-                if(childName == "")
-                {
-                    if (!parentObj.ContainsKey(name))
-                        parentObj[name] = new List<object>() { data };
-                    else
-                    {
-                        var list = parentObj[name] as List<object>;
-                        if (!list.Contains(data)) list.Add(data);
-                    }
-                }
-                else
-                {
-                    if (!parentObj.ContainsKey(name))
-                        parentObj[name] = new List<Dictionary<string, object>>() { new Dictionary<string, object>() };
-
-                    ParseColumn(childName, data, (parentObj[name] as List<Dictionary<string, object>>)[0] as Dictionary<string, object>);
-                }
-            }
-            else
-            {
-                parentObj[column] = data;
+                BulkPushToElasticsearch(sb.ToString());
+                sb.Clear();
+                var end = System.Environment.TickCount;
+                log.Info(string.Format("{0} has taken {1}s", count, (end - start) / 1000));
             }
         }
 
+        private void EagerCreateIndex(Destination destination)
+        {
+            try
+            {
+
+                var index = _client.CreateIndex(destination.Index, new Nest.IndexSettings());
+                _indexCreated = true;
+
+                if(destination.Mapping != null){
+                    _client.MapFluent(m=>
+                    {
+                        m.IndexName(destination.Index);
+                        m.TypeName(destination.Type);
+
+                        if (destination.Mapping.Parent != null)
+                            m.SetParent(destination.Mapping.Parent.Type);
+
+                        return m;
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+                throw;
+            }
+        }
     }
 }
