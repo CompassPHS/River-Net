@@ -20,27 +20,10 @@ namespace River.Components.Contexts
         public Destination Destination { get; set; }
 
         public string Cron { get; set; }
-
-        public int MaxBulkSize { get; set; }
-
-        //public bool SuppressNulls { get; set; }
-
+        
         public RiverContext()
         {
-            MaxBulkSize = 100;
+            
         }
-    }
-      
-
-    [Serializable]
-    [JsonObject]
-    public class Destination
-    {
-        public string Url { get; set; }
-
-        public string Index { get; set; }
-
-        public string Type { get; set; }
-
-    }   
+    }    
 }

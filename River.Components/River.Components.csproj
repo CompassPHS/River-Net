@@ -54,6 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Contexts\Converters\SourceConverter.cs" />
+    <Compile Include="Contexts\Destination.cs" />
     <Compile Include="Contexts\Sources\Database.cs" />
     <Compile Include="Contexts\Sources\FlatFile.cs" />
     <Compile Include="Contexts\Sources\Source.cs" />

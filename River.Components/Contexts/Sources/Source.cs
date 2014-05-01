@@ -12,5 +12,12 @@ namespace River.Components.Contexts.Sources
     public abstract class Source
     {
         public abstract string Type { get; }
+
+        public bool SuppressNulls { get; set; }
+
+        protected Source()
+        {
+            SuppressNulls = true;
+        }
     }
 }

@@ -31,7 +31,7 @@ namespace River.Components.Sources
                             {
                                 var data = reader[i];
 
-                                if ( /*_riverContext.SuppressNulls*/ true && data == DBNull.Value) continue;
+                                if (context.SuppressNulls && data == DBNull.Value) continue;
 
                                 ParseColumn(reader.GetName(i), data, rowObj);
                             }
