@@ -16,7 +16,7 @@ namespace River.Components.Sources
             {
                 string line = null;
 
-                IEnumerable<string> columns = null;
+                string[] columns = null;
 
                 while ((line = reader.ReadLine()) != null)
                 {
@@ -27,23 +27,22 @@ namespace River.Components.Sources
             }
         }
 
-        private Dictionary<string, object> MakeRowObj(IEnumerable<string> values, IEnumerable<string> headers)
+        private Dictionary<string, object> MakeRowObj(string[] values, string[] headers)
         {
-            if (headers.Count() != values.Count())
+            if (headers.Length != values.Length)
                 throw new ArgumentOutOfRangeException("values"
-                    , string.Format("headers:{0}, values:{1}", headers.Count(), values.Count())
+                    , string.Format("headers:{0}, values:{1}", headers.Length, values.Length)
                     , "The number of values did not match the number of headers");
 
             var rowObj = new Dictionary<string, object>();
 
-            foreach (var header in headers)
-                foreach (var value in values)
-                    rowObj.Add(header, value);
+            for (var i = 0; i < headers.Length; i++ )
+                rowObj.Add(headers[i], values[i]);
 
             return rowObj;
         }
 
-        private IEnumerable<string> ParseLine(string line, char[] delimiters)
+        private string[] ParseLine(string line, char[] delimiters)
         {
             return line.Split(delimiters, StringSplitOptions.RemoveEmptyEntries);
         }

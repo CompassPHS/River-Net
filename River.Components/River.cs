@@ -51,7 +51,8 @@ namespace River.Components
             };
             var index = _riverContext.Destination.Index;
             var type = _riverContext.Destination.Type;
-            sb.Append("{ \"index\" : { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\", \"_id\" : \"" + curObj["_id"] + "\"");
+            sb.Append("{ \"index\" : { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\"");
+            if (curObj.ContainsKey("_id")) sb.Append(", \"_id\" : \"" + curObj["_id"] + "\"");
             if (curObj.ContainsKey("_parent")) sb.Append(", \"_parent\" : \"" + curObj["_parent"] + "\"");
             sb.Append(" } }");
             sb.Append("\n");
@@ -84,7 +85,7 @@ namespace River.Components
                         {
                             curObj = new Dictionary<string, object>();
                         }
-                        else if (curObj.ContainsKey("_id") && curObj["_id"].ToString() != rowObj["_id"].ToString())
+                        else if (!curObj.ContainsKey("_id") || curObj["_id"].ToString() != rowObj["_id"].ToString())
                         {
                             //push curObj
                             PushObj(curObj, false);
