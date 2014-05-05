@@ -89,9 +89,16 @@ namespace River.Components.Sources
         {
             var mergedDrop = new Dictionary<string, object>();
 
-            foreach (var drop in bucket)
+            if (bucket.Count() > 1)
             {
-                Merge(drop, mergedDrop);
+                foreach (var drop in bucket)
+                {
+                    Merge(drop, mergedDrop);
+                }
+            }
+            else
+            {
+                mergedDrop = bucket.First();
             }
 
             return mergedDrop;
@@ -144,7 +151,8 @@ namespace River.Components.Sources
                 }
                 else
                 {
-                    // Skip, noop
+                    // No _id, object cannot be merged therefore is it's own thing
+                    yield return new List<Dictionary<string, object>>() { drop };
                 }
             }
 
