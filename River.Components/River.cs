@@ -68,6 +68,7 @@ namespace River.Components
 
             if (curObj != null) _mouth.PushObj(curObj, true);
 
+            _mouth.WaitForCurrent();
             log.Info(string.Format("Completed river {0}", _riverContext.Name));
         }
 
@@ -132,21 +133,31 @@ namespace River.Components
 
         Contexts.Destination _destination;
         Nest.ElasticClient _client;
+        List<Task> _responses;
 
         public Mouth(Contexts.Destination destination)
         {
             _destination = destination;
             _client = new Nest.ElasticClient(new Nest.ConnectionSettings(new Uri(destination.Url)));
+            _responses = new List<Task>();
         }
 
         private void BulkPushToElasticsearch(string body)
         {
-            var response = _client.Raw.BulkPut(_destination.Index
+            _responses.Add(_client.Raw.BulkPutAsync(_destination.Index
                 , _destination.Type
                 , body
-                , null);
+                , null).ContinueWith(s => ProcessBulkPushToElasticsearchResult(s.Result)));
+        }
 
-            log.Info(response);
+        private void ProcessBulkPushToElasticsearchResult(Nest.ConnectionStatus connectionStatus)
+        {
+            log.Info(connectionStatus);
+        }
+
+        public void WaitForCurrent()
+        {
+            Task.WaitAll(_responses.ToArray());
         }
 
         StringBuilder sb = new StringBuilder();
