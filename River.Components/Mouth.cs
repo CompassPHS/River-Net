@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace River.Components
 {
@@ -20,54 +21,78 @@ namespace River.Components
 
         Contexts.Destination _destination;
         Nest.ElasticClient _client;
-        List<Task> _responses;
 
-        public Mouth(Contexts.Destination destination)
+        BatchBlock<Dictionary<string, object>> Batch { get; set; }
+        ActionBlock<Dictionary<string, object>[]> Push { get; set; }
+
+        public Mouth(Contexts.Destination destination, TransformBlock<Dictionary<string, object>, Dictionary<string, object>> bed)
         {
             _destination = destination;
             _client = new Nest.ElasticClient(new Nest.ConnectionSettings(new Uri(destination.Url)));
-            _responses = new List<Task>();
+            CreateFlow(bed);
+        }
+
+        private void CreateFlow(TransformBlock<Dictionary<string, object>, Dictionary<string, object>> bed)
+        {
+            // Dataflow: Batch -> Push
+            Batch = new BatchBlock<Dictionary<string, object>>(_destination.MaxBulkSize);
+            Push = new ActionBlock<Dictionary<string, object>[]>(bucket =>
+            {
+                var sb = new StringBuilder();
+
+                foreach (var drop in bucket)
+                {
+                    sb.Append(Channel(drop));
+                }
+
+                BulkPushToElasticsearch(sb.ToString());
+            });
+
+            bed.LinkTo(Batch);
+            Batch.LinkTo(Push);
+
+            bed.Completion.ContinueWith(t =>
+            {
+                if (t.IsFaulted) ((IDataflowBlock)Batch).Fault(t.Exception);
+                else Batch.Complete();
+            });
+
+            Batch.Completion.ContinueWith(t =>
+            {
+                if (t.IsFaulted) ((IDataflowBlock)Push).Fault(t.Exception);
+                else Push.Complete();
+            });
         }
 
         private void BulkPushToElasticsearch(string body)
         {
-            _responses.Add(_client.Raw.BulkPutAsync(_destination.Index
+            if (!_indexCreated) EagerCreateIndex(_destination);
+            var response = _client.Raw.BulkPut(_destination.Index
                 , _destination.Type
                 , body
-                , null).ContinueWith(s => ProcessBulkPushToElasticsearchResult(s.Result)));
+                , null);
+            ProcessBulkPushToElasticsearchResult(response);
         }
 
         private void ProcessBulkPushToElasticsearchResult(Nest.ConnectionStatus connectionStatus)
         {
-            if (connectionStatus.Success)
-            {
-                log.Info(connectionStatus);
-            }
-            else
-            {
-                log.Error(connectionStatus.Error.ExceptionMessage);
-            }
+            log.Debug(connectionStatus.Result);
+            log.Info(string.Format("Result: {0}", connectionStatus.Success));
         }
 
-        public void Empty()
-        {
-            Task.WaitAll(_responses.ToArray());
-        }
-
-        StringBuilder sb = new StringBuilder();
-        int count = 0;
         int start = System.Environment.TickCount;
 
         bool _indexCreated = false;
 
-        public void PushObj(Dictionary<string, object> curObj, bool pushNow)
+        public string Channel(Dictionary<string, object> curObj)
         {
-            if (!_indexCreated) EagerCreateIndex(_destination);
+            var sb = new StringBuilder();
 
             var settings = new Newtonsoft.Json.JsonSerializerSettings()
             {
                 ReferenceLoopHandling = ReferenceLoopHandling.Ignore
             };
+
             var index = _destination.Index;
             var type = _destination.Type;
             sb.Append("{ \"index\" : { \"_index\" : \"" + index + "\", \"_type\" : \"" + type + "\"");
@@ -78,22 +103,13 @@ namespace River.Components
             sb.Append(JsonConvert.SerializeObject(curObj, settings));
             sb.Append("\n");
 
-            count++;
-
-            if (pushNow || count % _destination.MaxBulkSize == 0)
-            {
-                BulkPushToElasticsearch(sb.ToString());
-                sb.Clear();
-                var end = System.Environment.TickCount;
-                log.Info(string.Format("{0} has taken {1}s", count, (end - start) / 1000));
-            }
+            return sb.ToString();
         }
 
         private void EagerCreateIndex(Destination destination)
         {
             try
             {
-
                 var index = _client.CreateIndex(destination.Index, new Nest.IndexSettings());
                 _indexCreated = true;
 
@@ -116,6 +132,11 @@ namespace River.Components
                 log.Error(ex);
                 throw;
             }
+        }
+
+        internal void IsEmptied()
+        {
+            Push.Completion.Wait();
         }
     }
 }
