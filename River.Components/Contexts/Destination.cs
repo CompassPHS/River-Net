@@ -19,11 +19,14 @@ namespace River.Components.Contexts
 
         public int MaxBulkSize { get; set; }
 
+        public int MaxConcurrentRequests { get; set; }
+
         public Mapping Mapping { get; set; }
 
         Destination()
         {
             MaxBulkSize = 100;
+            MaxConcurrentRequests = 3;
         }
     }   
 
