@@ -12,7 +12,7 @@ namespace River.Components.Sources
         public Contexts.Sources.FlatFile _context;
 
         public FlatFile(Contexts.Sources.FlatFile source, TransformBlock<Dictionary<string, object>, Dictionary<string, object>> bed)
-            : base(bed)
+            : base(source, bed)
         {
             _context = source;
         }

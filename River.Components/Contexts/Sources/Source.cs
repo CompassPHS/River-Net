@@ -15,9 +15,12 @@ namespace River.Components.Contexts.Sources
 
         public bool SuppressNulls { get; set; }
 
+        public int MaxWorkers { get; set; }
+
         protected Source()
         {
             SuppressNulls = true;
+            MaxWorkers = 1;
         }
     }
 }

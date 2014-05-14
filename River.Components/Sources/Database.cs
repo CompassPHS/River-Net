@@ -13,7 +13,7 @@ namespace River.Components.Sources
         public Contexts.Sources.Database _context;
 
         public Database(Contexts.Sources.Database source, TransformBlock<Dictionary<string, object>, Dictionary<string, object>> bed)
-            : base(bed)
+            : base(source, bed)
         {
             _context = source;
         }

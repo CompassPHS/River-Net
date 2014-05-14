@@ -29,14 +29,17 @@ namespace River.Components.Sources
                 throw new ArgumentException();
         }
 
+        private Contexts.Sources.Source _source;
+
         /// <summary>
         /// Gets "drops" from source, corresponding to specific rows in the source type.
         /// </summary>
         /// <returns>Yielded enumeration of header/value pairs</returns>
         internal abstract IEnumerable<Dictionary<string, object>> GetDrops();
 
-        public Source(TransformBlock<Dictionary<string, object>, Dictionary<string, object>> bed)
+        public Source(Contexts.Sources.Source source, TransformBlock<Dictionary<string, object>, Dictionary<string, object>> bed)
         {
+            _source = source;
             CreateFlow(bed);
         }
 
@@ -60,14 +63,14 @@ namespace River.Components.Sources
                 IEnumerable<Dictionary<string, object>>>(bucket =>
                 {
                     return ParseBucket(bucket);
-                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 25 });
+                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = _source.MaxWorkers });
 
             Merger = new TransformBlock<
                 IEnumerable<Dictionary<string, object>>,
                 Dictionary<string, object>>(bucket =>
                 {
                     return MergeBucket(bucket);
-                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 25 });
+                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = _source.MaxWorkers });
 
             Parser.LinkTo(Merger);
             Merger.LinkTo(bed);
