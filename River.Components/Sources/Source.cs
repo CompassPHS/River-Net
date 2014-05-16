@@ -87,13 +87,18 @@ namespace River.Components.Sources
 
         private Dictionary<string, object> MergeBucket(IEnumerable<Dictionary<string, object>> bucket)
         {
-            //var mergedDrop = new Dictionary<string, object>();
-            Dictionary<string, object> mergedDrop = null;
+            var mergedDrop = new Dictionary<string, object>();
 
-            foreach (var drop in bucket)
+            if (bucket.Count() > 1)
             {
-                if (mergedDrop == null) mergedDrop = drop;
-                else Merge(drop, mergedDrop);
+                foreach (var drop in bucket)
+                {
+                    Merge(drop, mergedDrop);
+                }
+            }
+            else
+            {
+                mergedDrop = bucket.First();
             }
 
             return mergedDrop;
@@ -125,18 +130,30 @@ namespace River.Components.Sources
 
             foreach (var drop in GetDrops())
             {
-                if (bucket.Count > 0 
-                    && (!drop.ContainsKey("_id") || drop["_id"].ToString() != current))
+                if (drop.ContainsKey("_id"))
                 {
-                    // Yield aggregated bucket of water.
-                    yield return bucket;
-                    
-                    // Reset bucket
-                    bucket = new List<Dictionary<string, object>>();                   
-                }
+                    // Id found, check current
+                    if (current == null || drop["_id"].ToString() == current)
+                    {
+                        // Do nothing special, noop
+                    }
+                    else
+                    {
+                        // Yield aggregated bucket of water.
+                        yield return bucket;
 
-                bucket.Add(drop);
-                current = drop.ContainsKey("_id") ? drop["_id"].ToString() : null;
+                        // Reset bucket
+                        bucket = new List<Dictionary<string, object>>();
+                    }
+
+                    bucket.Add(drop);
+                    current = drop["_id"].ToString();
+                }
+                else
+                {
+                    // No _id, object cannot be merged therefore is it's own thing
+                    yield return new List<Dictionary<string, object>>() { drop };
+                }
             }
 
             // Yield the last bucket if there is one there
