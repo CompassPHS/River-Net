@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
@@ -22,11 +21,9 @@ namespace River.Components
 
         Contexts.Destination _destination;
         Nest.ElasticClient _client;
-        SemaphoreSlim _executingPushes;
 
         BatchBlock<Dictionary<string, object>> Batch { get; set; }
         ActionBlock<Dictionary<string, object>[]> Push { get; set; }
-        List<Task> PushTasks { get; set; }
 
         public Mouth(Contexts.Destination destination, TransformBlock<Dictionary<string, object>, Dictionary<string, object>> bed)
         {
@@ -49,7 +46,7 @@ namespace River.Components
                 }
 
                 BulkPushToElasticsearch(sb.ToString());
-            }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = _destination.MaxConcurrentRequests });
+            });
 
             bed.LinkTo(Batch);
             Batch.LinkTo(Push);
@@ -122,17 +119,13 @@ namespace River.Components
                     {
                         m.IndexName(destination.Index);
                         m.TypeName(destination.Type);
-                        
+
                         if (destination.Mapping.Parent != null)
                             m.SetParent(destination.Mapping.Parent.Type);
 
                         return m;
                     });
                 }
-
-                var settings = new Nest.IndexSettings();
-                settings.Add("refresh_interval", "-1");
-                _client.UpdateSettings(destination.Index, settings);
             }
             catch (Exception ex)
             {
@@ -141,17 +134,9 @@ namespace River.Components
             }
         }
 
-        private void Productionalize(Destination destination)
-        {
-            var settings = new Nest.IndexSettings();
-            settings.Add("refresh_interval", "1s");
-            _client.UpdateSettings(destination.Index, settings);
-        }
-
         internal void IsEmptied()
         {
             Push.Completion.Wait();
-            Productionalize(_destination);
         }
     }
 }

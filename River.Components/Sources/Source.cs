@@ -60,14 +60,14 @@ namespace River.Components.Sources
                 IEnumerable<Dictionary<string, object>>>(bucket =>
                 {
                     return ParseBucket(bucket);
-                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 25 });
+                });
 
             Merger = new TransformBlock<
                 IEnumerable<Dictionary<string, object>>,
                 Dictionary<string, object>>(bucket =>
                 {
                     return MergeBucket(bucket);
-                }, new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 25 });
+                });
 
             Parser.LinkTo(Merger);
             Merger.LinkTo(bed);
@@ -87,6 +87,7 @@ namespace River.Components.Sources
 
         private Dictionary<string, object> MergeBucket(IEnumerable<Dictionary<string, object>> bucket)
         {
+            //var mergedDrop = new Dictionary<string, object>();
             Dictionary<string, object> mergedDrop = null;
 
             foreach (var drop in bucket)
