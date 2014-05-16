@@ -68,7 +68,6 @@ namespace River.Components
 
             if (curObj != null) _mouth.PushObj(curObj, true);
 
-            _mouth.Empty();
             log.Info(string.Format("Completed river {0}", _riverContext.Name));
         }
 

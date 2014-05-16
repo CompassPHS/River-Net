@@ -20,38 +20,29 @@ namespace River.Components
 
         Contexts.Destination _destination;
         Nest.ElasticClient _client;
-        List<Task> _responses;
 
         public Mouth(Contexts.Destination destination)
         {
             _destination = destination;
             _client = new Nest.ElasticClient(new Nest.ConnectionSettings(new Uri(destination.Url)));
-            _responses = new List<Task>();
         }
 
         private void BulkPushToElasticsearch(string body)
         {
-            _responses.Add(_client.Raw.BulkPutAsync(_destination.Index
+            var connectionStatus = _client.Raw.BulkPut(_destination.Index
                 , _destination.Type
                 , body
-                , null).ContinueWith(s => ProcessBulkPushToElasticsearchResult(s.Result)));
-        }
+                , null);
 
-        private void ProcessBulkPushToElasticsearchResult(Nest.ConnectionStatus connectionStatus)
-        {
             if (connectionStatus.Success)
             {
-                log.Info(connectionStatus);
+                log.Debug(connectionStatus);
+                log.Info(string.Format("Result:{0}", connectionStatus.Success));
             }
             else
             {
                 log.Error(connectionStatus.Error.ExceptionMessage);
             }
-        }
-
-        public void Empty()
-        {
-            Task.WaitAll(_responses.ToArray());
         }
 
         StringBuilder sb = new StringBuilder();
