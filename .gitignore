@@ -11,7 +11,7 @@
 [Dd]ebugPublic/
 [Rr]elease/
 x64/
-build/
+**/build/
 bld/
 [Bb]in/
 [Oo]bj/
@@ -175,3 +175,13 @@ UpgradeLog*.htm
 
 # Microsoft Fakes
 FakesAssemblies/
+
+# Enable "lib/build" for the build functionality
+!lib/build/
+
+# Don't allow files handled by a package manager to be stored
+bower_components/
+node_modules/
+
+# Stop "0" files from being stored
+0

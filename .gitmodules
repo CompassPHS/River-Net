@@ -1,0 +1,3 @@
+[submodule "lib\\build"]
+	path = lib\\build
+	url = https://github.com/CompassPHS/Project-Builds
