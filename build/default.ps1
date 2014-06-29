@@ -39,10 +39,8 @@ properties {
     }
 }
 
-task default -Depends Build-WebConfig, Build-Solution, Install-NPM, Install-Bower, Compile-Grunt
+task default -Depends Build-Solution
 
 task Build-Solution -Depends Build-WebConfig {
     Exec { msbuild $projectFiles.Solution /maxcpucount /nologo /target:"$($msbuildConfig.Target)" /verbosity:"$($msbuildConfig.Verbosity)" } $messages.Default.Error
 }
-
-task Watch -Depends Watch-Grunt
