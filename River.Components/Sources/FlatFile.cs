@@ -3,23 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace River.Components.Sources
 {
     public class FlatFile : Source
     {
-        public Contexts.Sources.FlatFile _context;
-
-        public FlatFile(Contexts.Sources.FlatFile source, TransformBlock<Dictionary<string, object>, Dictionary<string, object>> bed)
-            : base(bed)
+        public override IEnumerable<Dictionary<string, object>> GetRows(Contexts.Sources.Source source)
         {
-            _context = source;
-        }
+            var context = source as Contexts.Sources.FlatFile;
 
-        internal override IEnumerable<Dictionary<string, object>> GetDrops()
-        {
-            using (var reader = new System.IO.StreamReader(_context.Location))
+            using (var reader = new System.IO.StreamReader(context.Location))
             {
                 string line = null;
 
@@ -27,9 +20,9 @@ namespace River.Components.Sources
 
                 while ((line = reader.ReadLine()) != null)
                 {
-                    if (columns == null) columns = ParseLine(line, _context.Delimiters);
+                    if (columns == null) columns = ParseLine(line, context.Delimiters);
                     else
-                        yield return MakeRowObj(ParseLine(line, _context.Delimiters), columns);
+                        yield return MakeRowObj(ParseLine(line, context.Delimiters), columns);
                 }
             }
         }
