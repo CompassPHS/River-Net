@@ -1,6 +1,11 @@
 -- this script is for SQL Server and Azure SQL
+CREATE DATABASE RiverNet;
+GO
 
-USE [Quartz]
+CREATE SCHEMA quartz
+GO
+
+USE [RiverNet]
 GO
 
 IF EXISTS (SELECT * FROM dbo.sysobjects WHERE id = OBJECT_ID(N'[quartz].[FK_QRTZ_TRIGGERS_QRTZ_JOB_DETAILS]') AND OBJECTPROPERTY(id, N'ISFOREIGNKEY') = 1)
